@@ -1,0 +1,1 @@
+# constantes (UTM zona, base, etc)

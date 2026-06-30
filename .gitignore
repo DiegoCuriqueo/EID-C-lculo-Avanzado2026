@@ -1,2 +1,35 @@
-pycache
-venv
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Streamlit
+.streamlit/
+
+# Datos
+data/resultados/
+*.csv
+!data/ruta_temuco.csv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+

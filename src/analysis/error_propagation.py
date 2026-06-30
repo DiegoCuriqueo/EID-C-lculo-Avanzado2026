@@ -1,0 +1,1 @@
+# Propagacion de erroes
