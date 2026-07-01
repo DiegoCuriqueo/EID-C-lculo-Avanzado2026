@@ -23,6 +23,7 @@ def velocidad_instantanea(x1, y1, z1, x2, y2, z2, dt):
     dz = z2 - z1
     return np.sqrt(dx**2 + dy**2 + dz**2) / dt
 
+
 def velocidad_vectorial(x1, y1, z1, x2, y2, z2, dt):
     """
     Calcula el vector velocidad entre dos puntos.

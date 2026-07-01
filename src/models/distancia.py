@@ -1,5 +1,6 @@
 """
 Modelo matemático de distancia: D(x,y,z) = sqrt(x² + y² + z²)
+
 """
 import numpy as np
 
@@ -128,7 +129,7 @@ def analisis_sensibilidad_punto(x, y, z, dx, dy, dz):
 
 def calcular_errores_df(df, dx, dy, dz):
     """
-    Calcula errores para todo un DataFrame (sin lambda).
+    Calcula errores para todo un DataFrame.
     
     Args:
         df: DataFrame con columnas 'x', 'y', 'z'

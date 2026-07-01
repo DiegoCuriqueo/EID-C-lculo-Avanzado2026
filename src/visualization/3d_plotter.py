@@ -1,1 +1,0 @@
-# graficos 3D matplotlib
