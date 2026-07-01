@@ -1,5 +1,5 @@
 """
-Aplicación Streamlit para análisis de propagación de errores en drones.
+Aplicacion Streamlit para analisis de propagacion de errores en drones.
 """
 import streamlit as st
 import pandas as pd
@@ -57,20 +57,28 @@ from src.utils.constants import (
 )
 from src.utils.helpers import generar_csv_ejemplo
 
-# ==================== CONFIGURACIÓN DE PÁGINA ====================
+# ==================== CONFIGURACION DE PAGINA ====================
 st.set_page_config(
     page_title=STREAMLIT_TITLE,
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# ==================== TÍTULO ====================
+# ==================== TITULO ====================
 st.title(STREAMLIT_TITLE)
 st.markdown("---")
 
+# ==================== INICIALIZAR ESTADO DE SESION ====================
+if 'analisis_realizado' not in st.session_state:
+    st.session_state.analisis_realizado = False
+if 'resultados_analysis' not in st.session_state:
+    st.session_state.resultados_analysis = None
+if 'df_original' not in st.session_state:
+    st.session_state.df_original = None
+
 # ==================== SIDEBAR ====================
 with st.sidebar:
-    st.header("Configuración")
+    st.header("Configuracion")
     
     # ===== Carga de archivo =====
     st.subheader("Datos de entrada")
@@ -81,7 +89,6 @@ with st.sidebar:
     )
     
     uploaded_file = None
-    df_original = None
     
     if opcion_datos == "Cargar archivo CSV":
         uploaded_file = st.file_uploader(
@@ -89,25 +96,29 @@ with st.sidebar:
             type=['csv'],
             help="El archivo debe tener columnas: lat, lon, altitud (opcional), tiempo (opcional)"
         )
+        
+        if uploaded_file is not None:
+            st.session_state.df_original = pd.read_csv(uploaded_file)
+            st.success(f"Datos cargados: {len(st.session_state.df_original)} puntos")
     else:
         # Generar datos de ejemplo
         if st.button("Generar datos de ejemplo"):
             with st.spinner("Generando datos de ejemplo..."):
                 ruta = generar_csv_ejemplo()
-                df_original = cargar_csv(ruta)
-                st.success(f"Datos de ejemplo generados: {len(df_original)} puntos")
+                st.session_state.df_original = cargar_csv(ruta)
+                st.success(f"Datos de ejemplo generados: {len(st.session_state.df_original)} puntos")
     
     st.markdown("---")
     
-    # ===== Configuración de errores =====
-    st.subheader("Errores de medición")
+    # ===== Configuracion de errores =====
+    st.subheader("Errores de medicion")
     
     tipo_error = st.selectbox(
         "Tipo de error GPS:",
-        ["Estándar (σ=0.5m)", "Preciso (σ=0.1m)", "Impreciso (σ=2m)", "Con deriva temporal", "Personalizado"]
+        ["Estandar (σ=0.5m)", "Preciso (σ=0.1m)", "Impreciso (σ=2m)", "Con deriva temporal", "Personalizado"]
     )
     
-    if tipo_error == "Estándar (σ=0.5m)":
+    if tipo_error == "Estandar (σ=0.5m)":
         std_xy = ERROR_GPS_ESTANDAR_STD_XY
         std_z = ERROR_GPS_ESTANDAR_STD_Z
         tipo_error_key = 'estandar'
@@ -133,18 +144,18 @@ with st.sidebar:
         with col2:
             std_z = st.slider("σ para z (m)", 0.05, 2.0, 0.2, 0.05)
         with col3:
-            correlacion = st.slider("Correlación", 0.0, 1.0, 0.0, 0.1)
+            correlacion = st.slider("Correlacion", 0.0, 1.0, 0.0, 0.1)
         tipo_error_key = 'personalizado'
     
     st.markdown("---")
     
-    # ===== Botón de análisis =====
+    # ===== Boton de analisis =====
     analizar_btn = st.button("ANALIZAR", use_container_width=True, type="primary")
 
-# ==================== FUNCIÓN DE ANÁLISIS ====================
+# ==================== FUNCION DE ANALISIS ====================
 def realizar_analisis(df, std_xy, std_z, tipo_error_key, **kwargs):
     """
-    Ejecuta todo el análisis con los datos proporcionados.
+    Ejecuta todo el analisis con los datos proporcionados.
     """
     with st.spinner("Procesando datos..."):
         # Convertir coordenadas
@@ -172,10 +183,10 @@ def realizar_analisis(df, std_xy, std_z, tipo_error_key, **kwargs):
                 correlacion=kwargs.get('correlacion', 0)
             )
         
-        # Analizar propagación
+        # Analizar propagacion
         resultados = analizar_propagacion_errores(df_convertido, dx, dy, dz)
         
-        # Estadísticas
+        # Estadisticas
         stats = calcular_estadisticas_errores(resultados)
         
         # Errores por punto
@@ -184,10 +195,10 @@ def realizar_analisis(df, std_xy, std_z, tipo_error_key, **kwargs):
         # Sensibilidad
         sensibilidad, resultados_sens = analisis_sensibilidad(resultados)
         
-        # Análisis por distancia
+        # Analisis por distancia
         precision_rangos = analisis_por_distancia(resultados)
         
-        # Métricas de precisión
+        # Metricas de precision
         metricas = metricas_precision(resultados)
         
         # Resumen comparativo
@@ -207,31 +218,35 @@ def realizar_analisis(df, std_xy, std_z, tipo_error_key, **kwargs):
             'df_original': df
         }
 
-# ==================== MAIN ====================
+# ==================== LOGICA PRINCIPAL ====================
 
-# Cargar datos si viene de archivo
-if uploaded_file is not None and analizar_btn:
-    df_original = pd.read_csv(uploaded_file)
-    st.success(f"Datos cargados: {len(df_original)} puntos")
+# Verificar si se presiono el boton de analisis
+if analizar_btn:
+    if st.session_state.df_original is not None:
+        # Ejecutar analisis
+        kwargs = {}
+        if tipo_error_key == 'deriva':
+            kwargs['drift_xy'] = drift_xy
+            kwargs['drift_z'] = drift_z
+        elif tipo_error_key == 'personalizado':
+            kwargs['correlacion'] = correlacion
+        
+        st.session_state.resultados_analysis = realizar_analisis(
+            st.session_state.df_original, 
+            std_xy, 
+            std_z, 
+            tipo_error_key,
+            **kwargs
+        )
+        st.session_state.analisis_realizado = True
+        st.rerun()
+    else:
+        st.warning("Primero debes cargar un archivo CSV o generar datos de ejemplo")
 
-# Verificar si hay datos para analizar
-if df_original is not None and analizar_btn:
+# Mostrar resultados si ya se realizo el analisis
+if st.session_state.analisis_realizado and st.session_state.resultados_analysis is not None:
     
-    # ===== EJECUTAR ANÁLISIS =====
-    kwargs = {}
-    if tipo_error_key == 'deriva':
-        kwargs['drift_xy'] = drift_xy
-        kwargs['drift_z'] = drift_z
-    elif tipo_error_key == 'personalizado':
-        kwargs['correlacion'] = correlacion
-    
-    resultados_analysis = realizar_analisis(
-        df_original, 
-        std_xy, 
-        std_z, 
-        tipo_error_key,
-        **kwargs
-    )
+    resultados_analysis = st.session_state.resultados_analysis
     
     resultados = resultados_analysis['resultados']
     resultados_punto = resultados_analysis['resultados_punto']
@@ -243,60 +258,60 @@ if df_original is not None and analizar_btn:
     base_lat = resultados_analysis['base_lat']
     base_lon = resultados_analysis['base_lon']
     df_convertido = resultados_analysis['df_convertido']
+    df_original = resultados_analysis['df_original']
     
     # ===== MOSTRAR RESULTADOS =====
     
     # Tabs para organizar
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "Resumen",
-        "Gráficos",
+        "Graficos",
         "Mapa",
-        "Análisis detallado",
+        "Analisis detallado",
         "Sensibilidad",
         "Datos"
     ])
     
     # ===== TAB 1: RESUMEN =====
     with tab1:
-        # Métricas principales
         col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric(
-                "Error exacto medio",
-                f"{stats['Error exacto medio'].iloc[0]:.4f} m"
-            )
-        
-        with col2:
-            st.metric(
-                "Error estimado medio",
-                f"{stats['Error estimado medio'].iloc[0]:.4f} m"
-            )
-        
-        with col3:
-            st.metric(
-                "Error de aprox. medio",
-                f"{stats['Error de aproximación medio'].iloc[0]:.4f} m"
-            )
-        
-        with col4:
-            correlacion = stats['Correlación exacto-estimado'].iloc[0]
-            st.metric(
-                "Correlación",
-                f"{correlacion:.4f}",
-                delta=None
-            )
+    
+    with col1:
+        st.metric(
+            "Error exacto medio",
+            f"{stats['Error exacto medio'].iloc[0]:.4f} m"
+        )
+    
+    with col2:
+        st.metric(
+            "Error estimado medio",
+            f"{stats['Error estimado medio'].iloc[0]:.4f} m"
+        )
+    
+    with col3:
+        st.metric(
+            "Error de aprox. medio",
+            f"{stats['Error de aproximación medio'].iloc[0]:.4f} m"  # ✅ Corregido
+        )
+    
+    with col4:
+        correlacion_val = stats['Correlación exacto-estimado'].iloc[0]  # ✅ Corregido
+        st.metric(
+            "Correlacion",
+            f"{correlacion_val:.4f}",
+            delta=None
+        )
         
         st.markdown("---")
         
         # Resumen ejecutivo
-        st.subheader("📌 Resumen ejecutivo")
+        st.subheader("Resumen ejecutivo")
         st.info(resumen['conclusion'])
         
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric(
-                "Correlación",
+                "Correlacion",
                 f"{resumen['correlacion']:.4f}",
                 resumen['correlacion_texto']
             )
@@ -308,84 +323,83 @@ if df_original is not None and analizar_btn:
             )
         with col3:
             st.metric(
-                "Error máximo",
+                "Error maximo",
                 f"{resumen['error_max']:.4f} m"
             )
         
         st.markdown("---")
         
-        # Métricas de precisión
-        st.subheader("Métricas de precisión")
+        # Metricas de precision
+        st.subheader("Metricas de precision")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("MAE", f"{metricas['MAE']:.4f} m")
         with col2:
             st.metric("RMSE", f"{metricas['RMSE']:.4f} m")
         with col3:
-            st.metric("R²", f"{metricas['R2']:.4f}")
+            st.metric("R2", f"{metricas['R2']:.4f}")
     
-    # ===== TAB 2: GRÁFICOS =====
+    # ===== TAB 2: GRAFICOS =====
     with tab2:
-        st.subheader("Visualización de errores")
+        st.subheader("Visualizacion de errores")
         
-        # Gráfico 1: Error exacto vs estimado
+        # Grafico 1: Error exacto vs estimado
         fig1 = px.scatter(
             resultados,
             x='error_exacto',
             y='error_estimado',
             title='Error Exacto vs Error Estimado',
             labels={'error_exacto': 'Error Exacto (m)', 'error_estimado': 'Error Estimado (m)'},
-            trendline='ols',
             color_discrete_sequence=['blue']
         )
         
-        # Agregar línea de perfecta correlación
+        # Agregar linea de perfecta correlacion
         min_val = min(resultados['error_exacto'].min(), resultados['error_estimado'].min())
         max_val = max(resultados['error_exacto'].max(), resultados['error_estimado'].max())
         fig1.add_scatter(
             x=[min_val, max_val],
             y=[min_val, max_val],
             mode='lines',
-            name='Perfecta correlación',
+            name='Perfecta correlacion',
             line=dict(color='red', dash='dash')
         )
         st.plotly_chart(fig1, use_container_width=True)
         
-        # Gráfico 2: Contribuciones en el tiempo
+        # Grafico 2: Contribuciones en el tiempo
         fig2 = px.line(
             resultados,
             x=resultados.index,
             y=['contrib_x', 'contrib_y', 'contrib_z'],
-            title='Contribución de cada coordenada al error',
-            labels={'value': 'Contribución (m)', 'index': 'Punto en trayectoria', 'variable': 'Coordenada'}
+            title='Contribucion de cada coordenada al error',
+            labels={'value': 'Contribucion (m)', 'index': 'Punto en trayectoria', 'variable': 'Coordenada'}
         )
         st.plotly_chart(fig2, use_container_width=True)
         
-        # Gráfico 3: Distribución del error
+        # Grafico 3: Distribucion del error
         fig3 = px.histogram(
             resultados,
             x='error_aproximacion',
-            title='Distribución del error de aproximación',
-            labels={'error_aproximacion': 'Error de aproximación (m)', 'count': 'Frecuencia'},
+            title='Distribucion del error de aproximacion',
+            labels={'error_aproximacion': 'Error de aproximacion (m)', 'count': 'Frecuencia'},
             nbins=20,
             color_discrete_sequence=['green']
         )
         fig3.add_vline(x=0, line_dash="dash", line_color="red", annotation_text="Error cero")
         st.plotly_chart(fig3, use_container_width=True)
         
-        # Gráfico 4: Precisión vs Distancia
+        # Grafico 4: Precision vs Distancia
         fig4 = px.scatter(
             resultados,
             x='distancia_real',
             y='error_aproximacion',
-            title='Precisión de la aproximación vs Distancia',
-            labels={'distancia_real': 'Distancia a la base (m)', 'error_aproximacion': 'Error de aproximación (m)'},
+            title='Precision de la aproximacion vs Distancia',
+            labels={'distancia_real': 'Distancia a la base (m)', 'error_aproximacion': 'Error de aproximacion (m)'},
             color='distancia_real',
             color_continuous_scale='Viridis'
         )
         st.plotly_chart(fig4, use_container_width=True)
         
-        # Gráfico 5: Evolución temporal
+        # Grafico 5: Evolucion temporal
         if 'tiempo' in df_original.columns:
             fig5 = make_subplots(specs=[[{"secondary_y": True}]])
             
@@ -405,7 +419,7 @@ if df_original is not None and analizar_btn:
                 secondary_y=True
             )
             
-            fig5.update_layout(title='Evolución temporal de distancia y errores')
+            fig5.update_layout(title='Evolucion temporal de distancia y errores')
             fig5.update_xaxes(title_text='Tiempo (s)')
             fig5.update_yaxes(title_text='Distancia (m)', secondary_y=False)
             fig5.update_yaxes(title_text='Error (m)', secondary_y=True)
@@ -427,27 +441,27 @@ if df_original is not None and analizar_btn:
         from streamlit_folium import st_folium
         st_folium(mapa, width=900, height=600)
         
-        st.caption("Verde: Ruta real | Rojo: Ruta con errores | 🗼 Estación base")
+        st.caption("Verde: Ruta real | Rojo: Ruta con errores | Estacion base")
     
-    # ===== TAB 4: ANÁLISIS DETALLADO =====
+    # ===== TAB 4: ANALISIS DETALLADO =====
     with tab4:
-        st.subheader("Análisis detallado")
+        st.subheader("Analisis detallado")
         
         col1, col2 = st.columns(2)
         
         with col1:
             # Punto con mayor error
             max_error = resultados.loc[resultados['error_exacto'].abs().idxmax()]
-            st.info("**Punto con mayor error**")
+            st.info("Punto con mayor error")
             st.write(f"Distancia: {max_error['distancia_real']:.2f} m")
             st.write(f"Error exacto: {max_error['error_exacto']:.4f} m")
             st.write(f"Error estimado: {max_error['error_estimado']:.4f} m")
             st.write(f"Diferencia: {max_error['error_aproximacion']:.4f} m")
         
         with col2:
-            # Punto con mejor aproximación
+            # Punto con mejor aproximacion
             min_error = resultados.loc[resultados['error_aproximacion'].abs().idxmin()]
-            st.success("**Punto con mejor aproximación**")
+            st.success("Punto con mejor aproximacion")
             st.write(f"Distancia: {min_error['distancia_real']:.2f} m")
             st.write(f"Error exacto: {min_error['error_exacto']:.4f} m")
             st.write(f"Error estimado: {min_error['error_estimado']:.4f} m")
@@ -455,18 +469,18 @@ if df_original is not None and analizar_btn:
         
         st.markdown("---")
         
-        # Interpretación
-        st.subheader("Interpretación de resultados")
+        # Interpretacion
+        st.subheader("Interpretacion de resultados")
         
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("**Ventajas de la aproximación diferencial:**")
+            st.markdown("**Ventajas de la aproximacion diferencial:**")
             st.markdown("""
-            - Rápida de calcular (sin raíces cuadradas)
+            - Rapida de calcular (sin raices cuadradas)
             - Ideal para sistemas en tiempo real
-            - Útil para estimar errores sin recalcular
-            - El gradiente indica la dirección de máximo error
+            - Util para estimar errores sin recalcular
+            - El gradiente indica la direccion de maximo error
             """)
         
         with col2:
@@ -475,47 +489,45 @@ if df_original is not None and analizar_btn:
             - Solo precisa para errores pequeños
             - Fallan cerca del origen (no diferenciable)
             - No captura efectos de segundo orden
-            - Depende de la geometría de la trayectoria
+            - Depende de la geometria de la trayectoria
             """)
         
         st.markdown("---")
         
-        # Condiciones de precisión
-        st.subheader("Condiciones de precisión")
+        # Condiciones de precision
+        st.subheader("Condiciones de precision")
         st.markdown(f"""
-        **La aproximación es más precisa cuando:**
+        **La aproximacion es mas precisa cuando:**
         - Los errores son pequeños (< 1m)
-        - El dron está lejos del origen (> 100m)
+        - El dron esta lejos del origen (> 100m)
         - Las coordenadas no son cercanas a cero
         - La trayectoria es suave (sin cambios bruscos)
         
-        **En este análisis:**
+        **En este analisis:**
         - Error medio: **{resumen['error_medio']:.4f} m**
-        - Correlación: **{resumen['correlacion']:.4f}**
-        - Precisión: **{resumen['precision_texto']}**
+        - Correlacion: **{resumen['correlacion']:.4f}**
+        - Precision: **{resumen['precision_texto']}**
         """)
     
     # ===== TAB 5: SENSIBILIDAD =====
     with tab5:
-        st.subheader("Análisis de sensibilidad")
-        
         col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.metric(
-                "Sensibilidad en x",
-                f"{sensibilidad['Contribución Promedio (%)'].iloc[0]:.1f}%"
-            )
-        with col2:
-            st.metric(
-                "Sensibilidad en y",
-                f"{sensibilidad['Contribución Promedio (%)'].iloc[1]:.1f}%"
-            )
-        with col3:
-            st.metric(
-                "Sensibilidad en z",
-                f"{sensibilidad['Contribución Promedio (%)'].iloc[2]:.1f}%"
-            )
+    
+    with col1:
+        st.metric(
+            "Sensibilidad en x",
+            f"{sensibilidad['Contribución Promedio (%)'].iloc[0]:.1f}%"  # ✅ Corregido
+        )
+    with col2:
+        st.metric(
+            "Sensibilidad en y",
+            f"{sensibilidad['Contribución Promedio (%)'].iloc[1]:.1f}%"  # ✅ Corregido
+        )
+    with col3:
+        st.metric(
+            "Sensibilidad en z",
+            f"{sensibilidad['Contribución Promedio (%)'].iloc[2]:.1f}%"  # ✅ Corregido
+        )
         
         st.markdown("---")
         
@@ -525,13 +537,13 @@ if df_original is not None and analizar_btn:
         
         st.markdown("---")
         
-        # Precisión por rango de distancia
-        st.subheader("Precisión por rango de distancia")
+        # Precision por rango de distancia
+        st.subheader("Precision por rango de distancia")
         st.dataframe(precision_rangos, use_container_width=True)
     
     # ===== TAB 6: DATOS =====
     with tab6:
-        st.subheader("Datos completos del análisis")
+        st.subheader("Datos completos del analisis")
         
         # Selector de columnas
         columnas_disponibles = resultados.columns.tolist()
@@ -546,7 +558,7 @@ if df_original is not None and analizar_btn:
         if columnas_mostrar:
             st.dataframe(resultados[columnas_mostrar], use_container_width=True)
         
-        # Botón de descarga
+        # Boton de descarga
         st.markdown("---")
         st.subheader("Descargar datos")
         
@@ -573,18 +585,18 @@ if df_original is not None and analizar_btn:
             )
 
 # ==================== ESTADO INICIAL ====================
-elif df_original is not None and not analizar_btn:
-    st.info("Configura los parámetros en la barra lateral y presiona 'ANALIZAR'")
+elif st.session_state.df_original is not None and not analizar_btn:
+    st.info("Configura los parametros en la barra lateral y presiona 'ANALIZAR'")
 
 else:
-    # ==================== PÁGINA DE INICIO ====================
+    # ==================== PAGINA DE INICIO ====================
     st.markdown("""
-    ##Bienvenido al analizador de errores para drones
+    ## Bienvenido al analizador de errores para drones
     
     ### Instrucciones:
-    1. **Carga un archivo CSV** con coordenadas en la barra lateral
-    2. **Configura los errores** de medición GPS
-    3. **Presiona ANALIZAR** para ver los resultados
+    1. Carga un archivo CSV con coordenadas en la barra lateral
+    2. Configura los errores de medicion GPS
+    3. Presiona ANALIZAR para ver los resultados
     
     ### Formato del archivo CSV:
     El archivo debe tener las siguientes columnas:
@@ -592,11 +604,5 @@ else:
     - `lon`: Longitud (grados decimales)
     - `altitud`: Altura (metros) - opcional
     - `tiempo`: Tiempo (segundos) - opcional
-    
-    ### Ejemplo:
-    ```csv
-    lat,lon,altitud,tiempo
-    -38.7359,-72.5904,50,0
-    -38.7365,-72.5895,52,1
-    -38.7370,-72.5885,48,2 
     """)
+   
