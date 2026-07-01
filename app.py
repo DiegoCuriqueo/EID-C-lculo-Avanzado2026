@@ -6,7 +6,6 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import os
 import sys
 
@@ -14,15 +13,13 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # ==================== IMPORTACIONES ====================
-from src.data_processing.loader import cargar_csv, validar_coordenadas
+from src.data_processing.loader import cargar_csv
 from src.data_processing.converter import convertir_coordenadas_relativas
 from src.data_processing.errors import (
     generar_errores,
     generar_errores_gps_real,
     generar_errores_con_deriva
 )
-
-from src.models.distancia import distancia, derivadas_parciales
 
 from src.analysis.error_propagation import (
     analizar_propagacion_errores,
@@ -34,19 +31,13 @@ from src.analysis.sensitivity import (
     analisis_por_distancia
 )
 from src.analysis.comparison import (
-    comparar_errores,
     metricas_precision,
-    tabla_comparativa,
     generar_resumen_comparativo
 )
 
 from src.visualization.map_plotter import crear_mapa_interactivo
-from src.visualization.error_plots import graficar_todas_visualizaciones
-from src.visualization._3d_plotter import plot_trayectoria_3d
 
 from src.utils.constants import (
-    TEMUCO_LAT,
-    TEMUCO_LON,
     STREAMLIT_TITLE,
     ERROR_GPS_ESTANDAR_STD_XY,
     ERROR_GPS_ESTANDAR_STD_Z,
@@ -80,15 +71,12 @@ if 'df_original' not in st.session_state:
 with st.sidebar:
     st.header("Configuracion")
     
-    # ===== Carga de archivo =====
     st.subheader("Datos de entrada")
     
     opcion_datos = st.radio(
         "Selecciona fuente de datos:",
         ["Cargar archivo CSV", "Usar datos de ejemplo"]
     )
-    
-    uploaded_file = None
     
     if opcion_datos == "Cargar archivo CSV":
         uploaded_file = st.file_uploader(
@@ -101,7 +89,6 @@ with st.sidebar:
             st.session_state.df_original = pd.read_csv(uploaded_file)
             st.success(f"Datos cargados: {len(st.session_state.df_original)} puntos")
     else:
-        # Generar datos de ejemplo
         if st.button("Generar datos de ejemplo"):
             with st.spinner("Generando datos de ejemplo..."):
                 ruta = generar_csv_ejemplo()
@@ -110,7 +97,6 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # ===== Configuracion de errores =====
     st.subheader("Errores de medicion")
     
     tipo_error = st.selectbox(
@@ -137,7 +123,7 @@ with st.sidebar:
         with col2:
             drift_z = st.slider("Deriva Z (m/paso)", 0.0, 0.05, 0.005, 0.001)
         tipo_error_key = 'deriva'
-    else:  # Personalizado
+    else:
         col1, col2, col3 = st.columns(3)
         with col1:
             std_xy = st.slider("σ para x,y (m)", 0.1, 5.0, 0.5, 0.1)
@@ -149,19 +135,13 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # ===== Boton de analisis =====
     analizar_btn = st.button("ANALIZAR", use_container_width=True, type="primary")
 
 # ==================== FUNCION DE ANALISIS ====================
 def realizar_analisis(df, std_xy, std_z, tipo_error_key, **kwargs):
-    """
-    Ejecuta todo el analisis con los datos proporcionados.
-    """
     with st.spinner("Procesando datos..."):
-        # Convertir coordenadas
         df_convertido, base_lat, base_lon = convertir_coordenadas_relativas(df)
         
-        # Generar errores
         n = len(df)
         if tipo_error_key == 'estandar':
             dx, dy, dz = generar_errores_gps_real(n, 'estandar')
@@ -175,7 +155,7 @@ def realizar_analisis(df, std_xy, std_z, tipo_error_key, **kwargs):
                 drift_xy=kwargs.get('drift_xy', 0.01),
                 drift_z=kwargs.get('drift_z', 0.005)
             )
-        else:  # personalizado
+        else:
             dx, dy, dz = generar_errores(
                 n, 
                 std_xy=std_xy, 
@@ -183,25 +163,12 @@ def realizar_analisis(df, std_xy, std_z, tipo_error_key, **kwargs):
                 correlacion=kwargs.get('correlacion', 0)
             )
         
-        # Analizar propagacion
         resultados = analizar_propagacion_errores(df_convertido, dx, dy, dz)
-        
-        # Estadisticas
         stats = calcular_estadisticas_errores(resultados)
-        
-        # Errores por punto
         resultados_punto = calcular_errores_por_punto(resultados)
-        
-        # Sensibilidad
         sensibilidad, resultados_sens = analisis_sensibilidad(resultados)
-        
-        # Analisis por distancia
         precision_rangos = analisis_por_distancia(resultados)
-        
-        # Metricas de precision
         metricas = metricas_precision(resultados)
-        
-        # Resumen comparativo
         resumen = generar_resumen_comparativo(resultados)
         
         return {
@@ -219,11 +186,8 @@ def realizar_analisis(df, std_xy, std_z, tipo_error_key, **kwargs):
         }
 
 # ==================== LOGICA PRINCIPAL ====================
-
-# Verificar si se presiono el boton de analisis
 if analizar_btn:
     if st.session_state.df_original is not None:
-        # Ejecutar analisis
         kwargs = {}
         if tipo_error_key == 'deriva':
             kwargs['drift_xy'] = drift_xy
@@ -249,7 +213,6 @@ if st.session_state.analisis_realizado and st.session_state.resultados_analysis 
     resultados_analysis = st.session_state.resultados_analysis
     
     resultados = resultados_analysis['resultados']
-    resultados_punto = resultados_analysis['resultados_punto']
     stats = resultados_analysis['stats']
     sensibilidad = resultados_analysis['sensibilidad']
     precision_rangos = resultados_analysis['precision_rangos']
@@ -257,79 +220,53 @@ if st.session_state.analisis_realizado and st.session_state.resultados_analysis 
     resumen = resultados_analysis['resumen']
     base_lat = resultados_analysis['base_lat']
     base_lon = resultados_analysis['base_lon']
-    df_convertido = resultados_analysis['df_convertido']
     df_original = resultados_analysis['df_original']
     
-    # ===== MOSTRAR RESULTADOS =====
-    
-    # Tabs para organizar
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "Resumen",
-        "Graficos",
-        "Mapa",
-        "Analisis detallado",
-        "Sensibilidad",
-        "Datos"
+        "Resumen", "Graficos", "Mapa", "Analisis detallado", "Sensibilidad", "Datos"
     ])
     
     # ===== TAB 1: RESUMEN =====
     with tab1:
+        st.subheader("Metricas principales")
+        
         col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric(
-            "Error exacto medio",
-            f"{stats['Error exacto medio'].iloc[0]:.4f} m"
-        )
-    
-    with col2:
-        st.metric(
-            "Error estimado medio",
-            f"{stats['Error estimado medio'].iloc[0]:.4f} m"
-        )
-    
-    with col3:
-        st.metric(
-            "Error de aprox. medio",
-            f"{stats['Error de aproximación medio'].iloc[0]:.4f} m"  # ✅ Corregido
-        )
-    
-    with col4:
-        correlacion_val = stats['Correlación exacto-estimado'].iloc[0]  # ✅ Corregido
-        st.metric(
-            "Correlacion",
-            f"{correlacion_val:.4f}",
-            delta=None
-        )
+        
+        with col1:
+            st.metric(
+                "Error exacto medio",
+                f"{stats['Error exacto medio'].iloc[0]:.4f} m"
+            )
+        with col2:
+            st.metric(
+                "Error estimado medio",
+                f"{stats['Error estimado medio'].iloc[0]:.4f} m"
+            )
+        with col3:
+            st.metric(
+                "Error de aprox. medio",
+                f"{stats['Error de aproximación medio'].iloc[0]:.4f} m"
+            )
+        with col4:
+            correlacion_val = stats['Correlación exacto-estimado'].iloc[0]
+            st.metric(
+                "Correlacion",
+                f"{correlacion_val:.4f}"
+            )
         
         st.markdown("---")
-        
-        # Resumen ejecutivo
         st.subheader("Resumen ejecutivo")
         st.info(resumen['conclusion'])
         
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric(
-                "Correlacion",
-                f"{resumen['correlacion']:.4f}",
-                resumen['correlacion_texto']
-            )
+            st.metric("Correlacion", f"{resumen['correlacion']:.4f}", resumen['correlacion_texto'])
         with col2:
-            st.metric(
-                "Error medio",
-                f"{resumen['error_medio']:.4f} m",
-                resumen['precision_texto']
-            )
+            st.metric("Error medio", f"{resumen['error_medio']:.4f} m", resumen['precision_texto'])
         with col3:
-            st.metric(
-                "Error maximo",
-                f"{resumen['error_max']:.4f} m"
-            )
+            st.metric("Error maximo", f"{resumen['error_max']:.4f} m")
         
         st.markdown("---")
-        
-        # Metricas de precision
         st.subheader("Metricas de precision")
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -343,105 +280,113 @@ if st.session_state.analisis_realizado and st.session_state.resultados_analysis 
     with tab2:
         st.subheader("Visualizacion de errores")
         
-        # Grafico 1: Error exacto vs estimado
-        fig1 = px.scatter(
-            resultados,
-            x='error_exacto',
-            y='error_estimado',
-            title='Error Exacto vs Error Estimado',
-            labels={'error_exacto': 'Error Exacto (m)', 'error_estimado': 'Error Estimado (m)'},
-            color_discrete_sequence=['blue']
-        )
-        
-        # Agregar linea de perfecta correlacion
-        min_val = min(resultados['error_exacto'].min(), resultados['error_estimado'].min())
-        max_val = max(resultados['error_exacto'].max(), resultados['error_estimado'].max())
-        fig1.add_scatter(
-            x=[min_val, max_val],
-            y=[min_val, max_val],
-            mode='lines',
-            name='Perfecta correlacion',
-            line=dict(color='red', dash='dash')
-        )
-        st.plotly_chart(fig1, use_container_width=True)
-        
-        # Grafico 2: Contribuciones en el tiempo
-        fig2 = px.line(
-            resultados,
-            x=resultados.index,
-            y=['contrib_x', 'contrib_y', 'contrib_z'],
-            title='Contribucion de cada coordenada al error',
-            labels={'value': 'Contribucion (m)', 'index': 'Punto en trayectoria', 'variable': 'Coordenada'}
-        )
-        st.plotly_chart(fig2, use_container_width=True)
-        
-        # Grafico 3: Distribucion del error
-        fig3 = px.histogram(
-            resultados,
-            x='error_aproximacion',
-            title='Distribucion del error de aproximacion',
-            labels={'error_aproximacion': 'Error de aproximacion (m)', 'count': 'Frecuencia'},
-            nbins=20,
-            color_discrete_sequence=['green']
-        )
-        fig3.add_vline(x=0, line_dash="dash", line_color="red", annotation_text="Error cero")
-        st.plotly_chart(fig3, use_container_width=True)
-        
-        # Grafico 4: Precision vs Distancia
-        fig4 = px.scatter(
-            resultados,
-            x='distancia_real',
-            y='error_aproximacion',
-            title='Precision de la aproximacion vs Distancia',
-            labels={'distancia_real': 'Distancia a la base (m)', 'error_aproximacion': 'Error de aproximacion (m)'},
-            color='distancia_real',
-            color_continuous_scale='Viridis'
-        )
-        st.plotly_chart(fig4, use_container_width=True)
-        
-        # Grafico 5: Evolucion temporal
-        if 'tiempo' in df_original.columns:
-            fig5 = make_subplots(specs=[[{"secondary_y": True}]])
+        if resultados is not None and len(resultados) > 0:
             
-            fig5.add_trace(
-                go.Scatter(x=df_original['tiempo'], y=resultados['distancia_real'],
-                          name='Distancia Real', line=dict(color='blue')),
-                secondary_y=False
-            )
-            fig5.add_trace(
-                go.Scatter(x=df_original['tiempo'], y=resultados['error_exacto'],
-                          name='Error Exacto', line=dict(color='red', dash='dash')),
-                secondary_y=True
-            )
-            fig5.add_trace(
-                go.Scatter(x=df_original['tiempo'], y=resultados['error_estimado'],
-                          name='Error Estimado', line=dict(color='orange', dash='dot')),
-                secondary_y=True
+            st.markdown("**Grafico 1: Error Exacto vs Error Estimado**")
+            fig1 = px.scatter(
+                resultados,
+                x='error_exacto',
+                y='error_estimado',
+                title='Error Exacto vs Error Estimado',
+                labels={'error_exacto': 'Error Exacto (m)', 'error_estimado': 'Error Estimado (m)'},
+                color_discrete_sequence=['blue']
             )
             
-            fig5.update_layout(title='Evolucion temporal de distancia y errores')
-            fig5.update_xaxes(title_text='Tiempo (s)')
-            fig5.update_yaxes(title_text='Distancia (m)', secondary_y=False)
-            fig5.update_yaxes(title_text='Error (m)', secondary_y=True)
+            min_val = min(resultados['error_exacto'].min(), resultados['error_estimado'].min())
+            max_val = max(resultados['error_exacto'].max(), resultados['error_estimado'].max())
+            fig1.add_scatter(
+                x=[min_val, max_val],
+                y=[min_val, max_val],
+                mode='lines',
+                name='Perfecta correlacion',
+                line=dict(color='red', dash='dash')
+            )
+            st.plotly_chart(fig1, use_container_width=True)
             
-            st.plotly_chart(fig5, use_container_width=True)
+            st.markdown("---")
+            
+            st.markdown("**Grafico 2: Contribucion de cada coordenada al error**")
+            fig2 = px.line(
+                resultados,
+                x=resultados.index,
+                y=['contrib_x', 'contrib_y', 'contrib_z'],
+                title='Contribucion de cada coordenada al error',
+                labels={'value': 'Contribucion (m)', 'index': 'Punto', 'variable': 'Coordenada'}
+            )
+            st.plotly_chart(fig2, use_container_width=True)
+            
+            st.markdown("---")
+            
+            st.markdown("**Grafico 3: Distribucion del error de aproximacion**")
+            fig3 = px.histogram(
+                resultados,
+                x='error_aproximacion',
+                title='Distribucion del error de aproximacion',
+                labels={'error_aproximacion': 'Error (m)', 'count': 'Frecuencia'},
+                nbins=20,
+                color_discrete_sequence=['green']
+            )
+            fig3.add_vline(x=0, line_dash="dash", line_color="red")
+            st.plotly_chart(fig3, use_container_width=True)
+            
+            st.markdown("---")
+            
+            st.markdown("**Grafico 4: Precision vs Distancia**")
+            fig4 = px.scatter(
+                resultados,
+                x='distancia_real',
+                y='error_aproximacion',
+                title='Precision de la aproximacion vs Distancia',
+                labels={'distancia_real': 'Distancia (m)', 'error_aproximacion': 'Error (m)'},
+                color='distancia_real',
+                color_continuous_scale='Viridis'
+            )
+            st.plotly_chart(fig4, use_container_width=True)
+            
+            if 'tiempo' in df_original.columns:
+                st.markdown("---")
+                st.markdown("**Grafico 5: Evolucion temporal**")
+                
+                fig5 = go.Figure()
+                fig5.add_trace(go.Scatter(
+                    x=df_original['tiempo'], 
+                    y=resultados['distancia_real'],
+                    name='Distancia Real',
+                    line=dict(color='blue', width=2)
+                ))
+                fig5.add_trace(go.Scatter(
+                    x=df_original['tiempo'], 
+                    y=resultados['error_exacto'],
+                    name='Error Exacto',
+                    line=dict(color='red', width=2, dash='dash')
+                ))
+                fig5.add_trace(go.Scatter(
+                    x=df_original['tiempo'], 
+                    y=resultados['error_estimado'],
+                    name='Error Estimado',
+                    line=dict(color='green', width=2, dash='dot')
+                ))
+                fig5.update_layout(
+                    title='Evolucion temporal de distancia y errores',
+                    xaxis_title='Tiempo (s)',
+                    yaxis_title='Valor (m)',
+                    hovermode='x unified'
+                )
+                st.plotly_chart(fig5, use_container_width=True)
+        
+        else:
+            st.warning("No hay datos para graficar")
     
     # ===== TAB 3: MAPA =====
     with tab3:
         st.subheader("Ruta del dron")
-        
-        # Crear mapa
-        mapa = crear_mapa_interactivo(
-            resultados,
-            base_lat,
-            base_lon
-        )
-        
-        # Mostrar mapa
-        from streamlit_folium import st_folium
-        st_folium(mapa, width=900, height=600)
-        
-        st.caption("Verde: Ruta real | Rojo: Ruta con errores | Estacion base")
+        try:
+            mapa = crear_mapa_interactivo(resultados, base_lat, base_lon)
+            from streamlit_folium import st_folium
+            st_folium(mapa, width=900, height=600)
+            st.caption("Verde: Ruta real | Rojo: Ruta con errores | Estacion base")
+        except Exception as e:
+            st.error(f"Error al generar el mapa: {e}")
     
     # ===== TAB 4: ANALISIS DETALLADO =====
     with tab4:
@@ -450,7 +395,6 @@ if st.session_state.analisis_realizado and st.session_state.resultados_analysis 
         col1, col2 = st.columns(2)
         
         with col1:
-            # Punto con mayor error
             max_error = resultados.loc[resultados['error_exacto'].abs().idxmax()]
             st.info("Punto con mayor error")
             st.write(f"Distancia: {max_error['distancia_real']:.2f} m")
@@ -459,7 +403,6 @@ if st.session_state.analisis_realizado and st.session_state.resultados_analysis 
             st.write(f"Diferencia: {max_error['error_aproximacion']:.4f} m")
         
         with col2:
-            # Punto con mejor aproximacion
             min_error = resultados.loc[resultados['error_aproximacion'].abs().idxmin()]
             st.success("Punto con mejor aproximacion")
             st.write(f"Distancia: {min_error['distancia_real']:.2f} m")
@@ -469,7 +412,6 @@ if st.session_state.analisis_realizado and st.session_state.resultados_analysis 
         
         st.markdown("---")
         
-        # Interpretacion
         st.subheader("Interpretacion de resultados")
         
         col1, col2 = st.columns(2)
@@ -494,7 +436,6 @@ if st.session_state.analisis_realizado and st.session_state.resultados_analysis 
         
         st.markdown("---")
         
-        # Condiciones de precision
         st.subheader("Condiciones de precision")
         st.markdown(f"""
         **La aproximacion es mas precisa cuando:**
@@ -511,33 +452,31 @@ if st.session_state.analisis_realizado and st.session_state.resultados_analysis 
     
     # ===== TAB 5: SENSIBILIDAD =====
     with tab5:
+        st.subheader("Analisis de sensibilidad")
+        
         col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric(
-            "Sensibilidad en x",
-            f"{sensibilidad['Contribución Promedio (%)'].iloc[0]:.1f}%"  # ✅ Corregido
-        )
-    with col2:
-        st.metric(
-            "Sensibilidad en y",
-            f"{sensibilidad['Contribución Promedio (%)'].iloc[1]:.1f}%"  # ✅ Corregido
-        )
-    with col3:
-        st.metric(
-            "Sensibilidad en z",
-            f"{sensibilidad['Contribución Promedio (%)'].iloc[2]:.1f}%"  # ✅ Corregido
-        )
+        
+        with col1:
+            st.metric(
+                "Sensibilidad en x",
+                f"{sensibilidad['Contribución Promedio (%)'].iloc[0]:.1f}%"
+            )
+        with col2:
+            st.metric(
+                "Sensibilidad en y",
+                f"{sensibilidad['Contribución Promedio (%)'].iloc[1]:.1f}%"
+            )
+        with col3:
+            st.metric(
+                "Sensibilidad en z",
+                f"{sensibilidad['Contribución Promedio (%)'].iloc[2]:.1f}%"
+            )
         
         st.markdown("---")
-        
-        # Tabla completa de sensibilidad
         st.subheader("Detalle de sensibilidad")
         st.dataframe(sensibilidad, use_container_width=True)
         
         st.markdown("---")
-        
-        # Precision por rango de distancia
         st.subheader("Precision por rango de distancia")
         st.dataframe(precision_rangos, use_container_width=True)
     
@@ -545,7 +484,6 @@ if st.session_state.analisis_realizado and st.session_state.resultados_analysis 
     with tab6:
         st.subheader("Datos completos del analisis")
         
-        # Selector de columnas
         columnas_disponibles = resultados.columns.tolist()
         columnas_por_defecto = ['punto', 'distancia_real', 'error_exacto', 'error_estimado', 'error_aproximacion']
         
@@ -558,7 +496,6 @@ if st.session_state.analisis_realizado and st.session_state.resultados_analysis 
         if columnas_mostrar:
             st.dataframe(resultados[columnas_mostrar], use_container_width=True)
         
-        # Boton de descarga
         st.markdown("---")
         st.subheader("Descargar datos")
         
@@ -589,7 +526,6 @@ elif st.session_state.df_original is not None and not analizar_btn:
     st.info("Configura los parametros en la barra lateral y presiona 'ANALIZAR'")
 
 else:
-    # ==================== PAGINA DE INICIO ====================
     st.markdown("""
     ## Bienvenido al analizador de errores para drones
     
@@ -604,5 +540,14 @@ else:
     - `lon`: Longitud (grados decimales)
     - `altitud`: Altura (metros) - opcional
     - `tiempo`: Tiempo (segundos) - opcional
+    
+    ### Objetivos del analisis:
+    - Calcular la distancia del dron a la estacion base
+    - Analizar la propagacion de errores de GPS
+    - Comparar error exacto vs estimado por diferencial
+    - Evaluar la sensibilidad de cada coordenada
     """)
-   
+
+# ==================== FOOTER ====================
+st.markdown("---")
+st.caption("Proyecto Final - Analisis de propagacion de errores en sistemas de posicionamiento para drones")

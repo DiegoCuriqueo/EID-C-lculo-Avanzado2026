@@ -29,7 +29,7 @@ COLOR_GRADIENTE = '#0066ff'
 COLOR_ERROR = '#ff8800'
 
 # ==================== STREAMLIT ====================
-STREAMLIT_TITLE = "🚁 Análisis de Propagación de Errores en Drones"
+STREAMLIT_TITLE = "Análisis de Propagación de Errores en Drones"
 STREAMLIT_LAYOUT = "wide"
 STREAMLIT_SIDEBAR_STATE = "expanded"
 
