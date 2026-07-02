@@ -1,13 +1,23 @@
 # app.py — versión reducida
 import streamlit as st
-from src.models import distancia, gradiente, velocidad
+from src.models.distancia import (
+    distancia,
+    derivadas_parciales,
+    diferencial_total,
+    comparacion_errores,
+)
+from src.models.gradiente import (
+    gradiente,
+    magnitud_gradiente,
+    direccion_maximo_crecimiento,
+)
 from src.utils.state import init_session_state
 
 st.set_page_config(page_title="Propagación de errores - Drones", layout="wide")
 init_session_state()
 st.title("Análisis de propagación de errores en posicionamiento de drones")
 
-tab1, tab2, tab4 = st.tabs([
+tab1, tab2, tab3 = st.tabs([
     "1. Modelo y datos",
     "2. Derivadas, gradiente y diferencial",
     "4. Visualizaciones y trayectoria",
@@ -16,9 +26,6 @@ tab1, tab2, tab4 = st.tabs([
 with tab1:
     st.header("Posición del dron y cálculo de la distancia exacta")
     st.caption("El error de medición se ingresa en la Pestaña 2, donde efectivamente se utiliza.")
-
-    from src.models.distancia import distancia
-
     st.subheader("Posición (x, y, z)")
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -64,7 +71,6 @@ with tab2:
         gradiente,
         magnitud_gradiente,
         direccion_maximo_crecimiento,
-        perpendicularidad_gradiente_nivel,
     )
 
     # Posición leída desde la Pestaña 1
@@ -140,11 +146,11 @@ with tab2:
     col1, col2, col3 = st.columns(3)
     col1.metric("Error exacto", f"{comp['error_exacto']:.4f} m")
     col2.metric("Error estimado (dD)", f"{comp['error_estimado']:.4f} m")
-    col3.metric("Diferencia (residuo)", f"{comp['diferencia']:.5f} m")
+    col3.metric("Diferencia (residuo)", f"{comp['diferencia_de_error']:.5f} m")
 
     st.caption("Todos los gráficos y visualizaciones 3D relacionados con esta posición y este error se encuentran en la Pestaña 4.")
 
-with tab4:
+with tab3:
     st.header("Visualizaciones 3D")
     st.caption(
         "Aquí se reúnen todas las visualizaciones del modelo: superficie de nivel, "

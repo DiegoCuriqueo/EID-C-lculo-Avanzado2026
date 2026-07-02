@@ -1,12 +1,3 @@
-"""
-Visualización 3D interactiva (Plotly) para el análisis de propagación
-de errores en el posicionamiento de drones.
-
-Se usa Plotly en vez de Matplotlib porque:
-- Permite rotar / hacer zoom / hacer hover interactivamente sobre la figura.
-- Se integra directo con Streamlit vía st.plotly_chart().
-- Da un resultado visualmente más "profesional" sin esfuerzo extra.
-"""
 import numpy as np
 import plotly.graph_objects as go
 
@@ -14,9 +5,6 @@ from src.models.distancia import distancia
 from src.models.gradiente import gradiente
 from src.analysis.error_propagation import trayectoria_con_error
 
-# ---------------------------------------------------------------------------
-# Paleta de colores (consistente en todas las figuras del proyecto)
-# ---------------------------------------------------------------------------
 COLOR_BASE = "#1f2937"        # estación base (gris oscuro)
 COLOR_SUPERFICIE = "#60a5fa"  # superficie de nivel (celeste translúcido)
 COLOR_REAL = "#10b981"        # posición real (verde)
@@ -29,18 +17,16 @@ COLOR_LLEGADA = "#dc2626"     # punto de llegada real con error (rojo intenso)
 COLOR_IDEAL = "#10b981"       # ruta ideal sin error (verde)
 COLOR_PLANEADA = "#6b7280"    # ruta "fantasma" que el dron cree seguir (gris)
 
-# Texto de las etiquetas: SIEMPRE negro y con tamaño legible, para que no
-# se camuflen con el fondo blanco del gráfico.
 TEXTFONT = dict(color="black", size=13, family="Arial")
 
-# Tamaños de marcador (más grandes = más fáciles de ver sin hacer zoom)
+# Tamaños de marcador
 MS_BASE = 11
 MS_PUNTO = 11
 MS_DESTACADO = 10
 
 
 def _layout_base(fig, titulo):
-    """Aplica un layout consistente y limpio a cualquier figura 3D del proyecto."""
+    """ Aplica un layout consistente y limpio a cualquier figura 3D del proyecto """
     fig.update_layout(
         title=dict(text=titulo, x=0.02, font=dict(size=18)),
         scene=dict(
@@ -66,7 +52,7 @@ def _layout_base(fig, titulo):
 
 
 def _malla_esfera(radio, resolucion=45):
-    """Genera coordenadas (x, y, z) de una esfera centrada en el origen."""
+    """ Genera coordenadas (x, y, z) de una esfera centrada en el origen """
     theta = np.linspace(0, np.pi, resolucion)
     phi = np.linspace(0, 2 * np.pi, resolucion)
     theta, phi = np.meshgrid(theta, phi)
@@ -77,12 +63,6 @@ def _malla_esfera(radio, resolucion=45):
 
 
 def figura_posicion_y_nivel(x, y, z, dx, dy, dz):
-    """
-    Figura para la Pestaña 4: muestra la estación base, la superficie de
-    nivel (esfera D(x,y,z) = D0) que pasa por la posición real del dron,
-    la posición real, la posición medida (con error) y el vector de error
-    entre ambas.
-    """
     D0 = distancia(x, y, z)
     xm, ym, zm = x + dx, y + dy, z + dz
 
@@ -129,11 +109,11 @@ def figura_posicion_y_nivel(x, y, z, dx, dy, dz):
         name=f"Posición medida ({xm:.2f}, {ym:.2f}, {zm:.2f})",
     ))
 
-    # --- ARREGLO GRAFICO 1: Vector de error más grande y visible (Línea discontinua) ---
+    # --- Vector de error más grande y visible (Línea discontinua) ---
     fig.add_trace(go.Scatter3d(
         x=[x, xm], y=[y, ym], z=[z, zm],
         mode="lines",
-        line=dict(color=COLOR_ERROR, width=22, dash="dash"),  # Aumentado a 22 para que resalte
+        line=dict(color=COLOR_ERROR, width=22, dash="dash"), 
         name="Vector de error (dx, dy, dz)",
     ))
 
@@ -150,10 +130,6 @@ def figura_posicion_y_nivel(x, y, z, dx, dy, dz):
 
 
 def figura_gradiente_y_plano_tangente(x, y, z, escala=None):
-    """
-    Figura para la Pestaña 4: muestra el punto (x,y,z) sobre la superficie
-    de nivel, el vector gradiente ∇D en ese punto.
-    """
     D0 = distancia(x, y, z)
     grad = gradiente(x, y, z)
 
@@ -225,10 +201,6 @@ def figura_gradiente_y_plano_tangente(x, y, z, escala=None):
 
 
 def figura_trayectoria_destino(x, y, z, dx, dy, dz, x_dest, y_dest, z_dest):
-    """
-    Figura para la Pestaña 4: muestra el efecto del error de medición sobre
-    la trayectoria del dron hacia un destino planeado.
-    """
     r = trayectoria_con_error(x, y, z, dx, dy, dz, x_dest, y_dest, z_dest)
     real, medida = r["real"], r["medida"]
     destino, llegada = r["destino"], r["punto_llegada"]
@@ -282,7 +254,7 @@ def figura_trayectoria_destino(x, y, z, dx, dy, dz, x_dest, y_dest, z_dest):
         x=[real[0], destino[0]], y=[real[1], destino[1]], z=[real[2], destino[2]],
         mode="lines",
         line=dict(color=COLOR_IDEAL, width=8),
-        name="uta ideal: real → destino (sin error)",
+        name="Ruta ideal: real → destino (sin error)",
     ))
 
     # --- Ruta ejecutada: real -> punto de llegada (con error) ---
