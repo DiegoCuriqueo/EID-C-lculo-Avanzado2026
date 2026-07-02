@@ -1,1 +1,0 @@
-# Gráficos de errores

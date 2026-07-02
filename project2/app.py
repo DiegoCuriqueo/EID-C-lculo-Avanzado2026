@@ -1,9 +1,6 @@
 # app.py — versión reducida
 import streamlit as st
 from src.models import distancia, gradiente, velocidad
-from src.analysis import error_propagation, sensitivity, comparison
-from src.visualization import map_plotter, error_plots
-from src.data_processing import loader, errors
 from src.utils.state import init_session_state
 
 st.set_page_config(page_title="Propagación de errores - Drones", layout="wide")

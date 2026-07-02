@@ -1,1 +1,0 @@
-# comparacion exacto vs estimado
