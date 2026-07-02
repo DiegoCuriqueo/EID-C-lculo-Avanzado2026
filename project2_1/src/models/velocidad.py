@@ -1,21 +1,7 @@
-"""
-Módulo para el cálculo de velocidad y propagación de errores en velocidad.
-"""
 import numpy as np
-import pandas as pd
 
 def velocidad_instantanea(x1, y1, z1, x2, y2, z2, dt):
-    """
-    Calcula la rapidez instantánea entre dos puntos.
-    
-    Args:
-        x1, y1, z1: Coordenadas en t
-        x2, y2, z2: Coordenadas en t+dt
-        dt: Intervalo de tiempo (segundos)
-    
-    Returns:
-        float: Rapidez en m/s
-    """
+    """ Calcula la rapidez instantánea entre dos puntos """
     if dt == 0:
         return 0.0
     dx = x2 - x1
@@ -24,17 +10,7 @@ def velocidad_instantanea(x1, y1, z1, x2, y2, z2, dt):
     return np.sqrt(dx**2 + dy**2 + dz**2) / dt
 
 def velocidad_vectorial(x1, y1, z1, x2, y2, z2, dt):
-    """
-    Calcula el vector velocidad entre dos puntos.
-    
-    Args:
-        x1, y1, z1: Coordenadas en t
-        x2, y2, z2: Coordenadas en t+dt
-        dt: Intervalo de tiempo (segundos)
-    
-    Returns:
-        tuple: (vx, vy, vz) en m/s
-    """
+    """ Calcula el vector velocidad entre dos puntos """
     if dt == 0:
         return 0.0, 0.0, 0.0
     vx = (x2 - x1) / dt
@@ -42,22 +18,8 @@ def velocidad_vectorial(x1, y1, z1, x2, y2, z2, dt):
     vz = (z2 - z1) / dt
     return vx, vy, vz
 
-def error_velocidad(x, y, z, dx, dy, dz, dt, vx, vy, vz):
-    """
-    Propaga errores de posición a la velocidad.
-    
-    Usa la regla de la cadena para estimar el error en velocidad
-    a partir de errores en posición.
-    
-    Args:
-        x, y, z: Posición actual (no se usa directamente pero se mantiene por consistencia)
-        dx, dy, dz: Errores en posición (metros)
-        dt: Intervalo de tiempo (segundos)
-        vx, vy, vz: Velocidades actuales (m/s)
-    
-    Returns:
-        float: Error estimado en la velocidad (m/s)
-    """
+def error_velocidad(dx, dy, dz, dt, vx, vy, vz):
+    """ Propaga errores de posición a la velocidad """
     v = np.sqrt(vx**2 + vy**2 + vz**2)
     if v == 0 or dt == 0:
         return 0.0
@@ -74,23 +36,8 @@ def error_velocidad(x, y, z, dx, dy, dz, dt, vx, vy, vz):
     return dv
 
 def comparacion_errores_velocidad(x1, y1, z1, x2, y2, z2, dt, dx, dy, dz):
-    """
-    Compara el error exacto vs. la estimación lineal (diferencial) en la
-    velocidad, análogo a comparacion_errores() para la distancia.
-
-    El error de medición (dx, dy, dz) se aplica sobre la posición en t+dt,
-    tal como se plantea en la sección 5.1 del informe.
-
-    Args:
-        x1, y1, z1: Posición real en t
-        x2, y2, z2: Posición real en t+dt
-        dt: Intervalo de tiempo (segundos)
-        dx, dy, dz: Errores de medición en la posición t+dt (metros)
-
-    Returns:
-        dict con la velocidad real, la velocidad medida, y la comparación
-        entre el error exacto y el error estimado por el diferencial.
-    """
+    """ Compara el error exacto vs. la estimación lineal (diferencial) en la
+    velocidad, análogo a comparacion_errores() para la distancia """
     if dt == 0:
         return None
 
@@ -115,11 +62,7 @@ def comparacion_errores_velocidad(x1, y1, z1, x2, y2, z2, dt, dx, dy, dz):
 
 
 def analisis_sensibilidad_velocidad(x1, y1, z1, x2, y2, z2, dt, dx, dy, dz):
-    """
-    Descompone el error estimado en velocidad según la contribución de
-    cada componente del error de posición (dx, dy, dz), análogo a
-    analisis_sensibilidad_punto() para la distancia.
-    """
+    """ Descompone el error estimado en velocidad según la contribución de cada componente del error de posición (dx, dy, dz) """
     vx, vy, vz = velocidad_vectorial(x1, y1, z1, x2, y2, z2, dt)
     v = np.sqrt(vx**2 + vy**2 + vz**2)
 
@@ -147,16 +90,7 @@ def analisis_sensibilidad_velocidad(x1, y1, z1, x2, y2, z2, dt, dx, dy, dz):
 
 
 def calcular_velocidad_trayectoria(df, col_tiempo='tiempo'):
-    """
-    Calcula velocidad y aceleración para una trayectoria.
-    
-    Args:
-        df: DataFrame con columnas 'x', 'y', 'z' y col_tiempo
-        col_tiempo: Nombre de la columna de tiempo
-    
-    Returns:
-        DataFrame con columnas adicionales de velocidad y aceleración
-    """
+    """ Calcula velocidad y aceleración para una trayectoria """
     df_result = df.copy()
     
     # Calcular diferencias
@@ -203,16 +137,7 @@ def calcular_velocidad_trayectoria(df, col_tiempo='tiempo'):
     return df_result
 
 def propagacion_error_velocidad_df(df_velocidad, dx, dy, dz):
-    """
-    Calcula la propagación de errores a velocidad para toda la trayectoria.
-    
-    Args:
-        df_velocidad: DataFrame con columnas 'x','y','z','vx','vy','vz','dt'
-        dx, dy, dz: Errores en posición (arrays o listas)
-    
-    Returns:
-        DataFrame con columna 'dv' (error estimado en velocidad)
-    """
+    """ Calcula la propagación de errores a velocidad para toda la trayectoria. """
     df_result = df_velocidad.copy()
     
     errores_dv = []
@@ -237,17 +162,7 @@ def propagacion_error_velocidad_df(df_velocidad, dx, dy, dz):
     return df_result
 
 def error_velocidad_exacto(df_velocidad, dx, dy, dz, col_tiempo='tiempo'):
-    """
-    Calcula el error exacto en velocidad comparando con y sin errores.
-    
-    Args:
-        df_velocidad: DataFrame con posiciones reales
-        dx, dy, dz: Errores en posición
-        col_tiempo: Columna de tiempo
-    
-    Returns:
-        DataFrame con columnas de velocidad exacta y con error
-    """
+    """ Calcula el error exacto en velocidad comparando con y sin errores """
     df_result = df_velocidad.copy()
     
     # Crear DataFrame con posiciones con error

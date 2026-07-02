@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 from src.models.distancia import distancia
 from src.models.gradiente import gradiente
 from src.analysis.error_propagation import trayectoria_con_error
-from src.models.velocidad import velocidad_vectorial, velocidad_instantanea
+from src.models.velocidad import velocidad_instantanea
 
 COLOR_BASE = "#1f2937"        # estación base (gris oscuro)
 COLOR_SUPERFICIE = "#60a5fa"  # superficie de nivel (celeste translúcido)

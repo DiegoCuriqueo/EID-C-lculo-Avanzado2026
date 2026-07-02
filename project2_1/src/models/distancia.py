@@ -49,25 +49,3 @@ def comparacion_errores(x, y, z, dx, dy, dz):
         'diferencia_de_error': exacto - estimado,
         'error_relativo_pct': ((exacto - estimado)/exacto*100) if exacto != 0 else 0
     }
-
-def analisis_sensibilidad_punto(x, y, z, dx, dy, dz):
-    """ Analiza el impacto relativo de cada coordenada en el error """
-    dDx, dDy, dDz = derivadas_parciales(x, y, z)
-    error_estimado = diferencial_total(x, y, z, dx, dy, dz)
-    
-    contrib_x = dDx * dx
-    contrib_y = dDy * dy
-    contrib_z = dDz * dz
-    
-    if error_estimado == 0:
-        return {'contrib_x': contrib_x, 'contrib_y': contrib_y, 'contrib_z': contrib_z, 
-                'contrib_x_pct': 0, 'contrib_y_pct': 0, 'contrib_z_pct': 0}
-    
-    return {
-        'contrib_x': contrib_x,
-        'contrib_y': contrib_y,
-        'contrib_z': contrib_z,
-        'contrib_x_pct': abs(contrib_x / error_estimado * 100),
-        'contrib_y_pct': abs(contrib_y / error_estimado * 100),
-        'contrib_z_pct': abs(contrib_z / error_estimado * 100)
-    }

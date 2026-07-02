@@ -39,20 +39,3 @@ def direccion_maximo_crecimiento(x, y, z):
     if norm == 0:
         return np.array([0.0, 0.0, 0.0])
     return grad / norm
-
-def gradiente_proyeccion(x, y, z, dx, dy, dz):
-    """ Calcula la proyección del gradiente en una dirección dada por el error. """
-    grad = gradiente(x, y, z)
-    direccion = np.array([dx, dy, dz])
-    norm_direccion = np.linalg.norm(direccion)
-    
-    if norm_direccion == 0:
-        return 0.0
-    
-    # Producto punto entre el gradiente y el vector de dirección unitario
-    proyeccion = np.dot(grad, direccion / norm_direccion)
-    return float(proyeccion)
-
-def gradiente_en_direccion(x, y, z, dx, dy, dz):
-    """ Calcula la derivada direccional en la dirección dada """
-    return gradiente_proyeccion(x, y, z, dx, dy, dz)

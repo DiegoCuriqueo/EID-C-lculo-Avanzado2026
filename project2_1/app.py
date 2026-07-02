@@ -1,17 +1,10 @@
 # app.py — versión reducida
 import streamlit as st
-from src.models.distancia import (
-    distancia,
-    derivadas_parciales,
-    diferencial_total,
-    comparacion_errores,
-)
-from src.models.gradiente import (
-    gradiente,
-    magnitud_gradiente,
-    direccion_maximo_crecimiento,
-)
+from src.models.distancia import (distancia, derivadas_parciales, diferencial_total, comparacion_errores)
+from src.models.gradiente import (gradiente, magnitud_gradiente, direccion_maximo_crecimiento)
 from src.utils.state import init_session_state
+from src.visualization.plotter_3d import (figura_posicion_y_nivel, figura_gradiente_y_plano_tangente, figura_trayectoria_destino, figura_trayectoria_velocidad)
+from src.models.velocidad import (velocidad_vectorial, velocidad_instantanea, comparacion_errores_velocidad,analisis_sensibilidad_velocidad)
 
 st.set_page_config(page_title="Propagación de errores - Drones", layout="wide")
 init_session_state()
@@ -61,18 +54,6 @@ with tab1:
 
 with tab2:
     st.header("Derivadas parciales, gradiente y diferencial total")
-
-    from src.models.distancia import (
-        distancia,
-        derivadas_parciales,
-        diferencial_total,
-        comparacion_errores,
-    )
-    from src.models.gradiente import (
-        gradiente,
-        magnitud_gradiente,
-        direccion_maximo_crecimiento,
-    )
 
     # Posición leída desde la Pestaña 1
     x = st.session_state.posicion["x"]
@@ -162,14 +143,6 @@ with tab3:
         r"v \approx \frac{\|(x_2,y_2,z_2) - (x_1,y_1,z_1)\|}{\Delta t} = "
         r"\frac{\sqrt{(x_2-x_1)^2 + (y_2-y_1)^2 + (z_2-z_1)^2}}{\Delta t}"
     )
-
-    from src.models.velocidad import (
-        velocidad_vectorial,
-        velocidad_instantanea,
-        comparacion_errores_velocidad,
-        analisis_sensibilidad_velocidad,
-    )
-    from src.visualization.plotter_3d import figura_trayectoria_velocidad
 
     st.subheader("Posiciones en t y en t + Δt")
     col_t1, col_t2 = st.columns(2)
@@ -294,13 +267,6 @@ with tab4:
     st.caption(
         "Aquí se reúnen todas las visualizaciones del modelo: superficie de nivel, "
         "gradiente, plano tangente y el efecto del error sobre una trayectoria hacia un destino."
-    )
-
-    from src.models.distancia import distancia
-    from src.visualization.plotter_3d import (
-        figura_posicion_y_nivel,
-        figura_gradiente_y_plano_tangente,
-        figura_trayectoria_destino,
     )
 
     x = st.session_state.posicion["x"]
